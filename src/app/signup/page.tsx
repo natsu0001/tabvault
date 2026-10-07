@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [name, setName] = useState("");
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,10 +23,15 @@ export default function SignupPage() {
     setError("");
     setMessage("");
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+const { error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    data: {
+      name,
+    },
+  },
+});
 
     if (error) {
       setError(error.message);
@@ -69,6 +75,24 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
+            <div>
+  <label
+    htmlFor="name"
+    className="mb-2 block text-sm font-medium"
+  >
+    Name
+  </label>
+
+  <input
+    id="name"
+    type="text"
+    required
+    value={name}
+    onChange={(e) => setName(e.target.value)}
+    placeholder="Your name"
+    className="w-full border border-border bg-background px-3 py-2.5 text-sm outline-none placeholder:text-subtle focus:border-border-hover"
+  />
+</div>
             <div>
               <label
                 htmlFor="email"

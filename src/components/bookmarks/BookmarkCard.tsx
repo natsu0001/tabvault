@@ -1,6 +1,10 @@
 
-import type { Bookmark } from "@/types/bookmark";
+"use client";
+
+import { useState } from "react";
 import { ExternalLink, Star } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { Bookmark } from "@/types/bookmark";
 
 type BookmarkCardProps = {
   bookmark: Bookmark;
@@ -9,6 +13,36 @@ type BookmarkCardProps = {
 export default function BookmarkCard({
   bookmark,
 }: BookmarkCardProps) {
+  const supabase = createClient();
+
+  const [isFavorite, setIsFavorite] = useState(
+    bookmark.is_favorite,
+  );
+
+  const [loading, setLoading] = useState(false);
+
+  async function toggleFavorite() {
+    if (loading) return;
+
+    const nextValue = !isFavorite;
+
+    setIsFavorite(nextValue);
+    setLoading(true);
+
+    const { error } = await supabase
+      .from("bookmarks")
+      .update({
+        is_favorite: nextValue,
+      })
+      .eq("id", bookmark.id);
+
+    if (error) {
+      setIsFavorite(!nextValue);
+    }
+
+    setLoading(false);
+  }
+
   return (
     <article className="border border-border bg-surface p-5 transition-colors hover:border-border-hover">
       <div className="flex items-start justify-between gap-4">
@@ -24,16 +58,18 @@ export default function BookmarkCard({
 
         <button
           type="button"
-          className="shrink-0 text-subtle transition-colors hover:text-warning"
+          onClick={toggleFavorite}
+          disabled={loading}
           aria-label={
-            bookmark.is_favorite
+            isFavorite
               ? "Remove from favorites"
               : "Add to favorites"
           }
+          className="shrink-0 text-subtle transition-colors hover:text-warning disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Star
             size={17}
-            fill={bookmark.is_favorite ? "currentColor" : "none"}
+            fill={isFavorite ? "currentColor" : "none"}
           />
         </button>
       </div>

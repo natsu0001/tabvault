@@ -127,6 +127,7 @@ export default async function DashboardPage() {
                 <BookmarkCard
                   key={bookmark.id}
                   bookmark={bookmark}
+                  categories={typedCategories}
                 />
               ))}
             </div>

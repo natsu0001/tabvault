@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import AddBookmarkForm from "@/components/bookmarks/AddBookmarkForm";
 import BookmarkCard from "@/components/bookmarks/BookmarkCard";
 import type { Bookmark } from "@/types/bookmark";
+import CategoryManager from "@/components/categories/CategoryManager";
 
 export default async function DashboardPage() {
   const supabase = await createClient();

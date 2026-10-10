@@ -1,14 +1,20 @@
-
 import { createClient } from "@/lib/supabase/server";
 import AddBookmarkForm from "@/components/bookmarks/AddBookmarkForm";
 import BookmarkCard from "@/components/bookmarks/BookmarkCard";
 import CategoryManager from "@/components/categories/CategoryManager";
+import CollectionManager from "@/components/collections/CollectionManager";
 import type { Bookmark } from "@/types/bookmark";
 
 type Category = {
   id: string;
   name: string;
   color: string | null;
+};
+
+type Collection = {
+  id: string;
+  name: string;
+  description: string | null;
 };
 
 export default async function DashboardPage() {
@@ -21,6 +27,7 @@ export default async function DashboardPage() {
   const [
     { data: bookmarks, error: bookmarksError },
     { data: categories, error: categoriesError },
+    { data: collections, error: collectionsError },
   ] = await Promise.all([
     supabase
       .from("bookmarks")
@@ -31,15 +38,20 @@ export default async function DashboardPage() {
       .from("categories")
       .select("id, name, color")
       .order("name"),
+
+    supabase
+      .from("collections")
+      .select("id, name, description")
+      .order("name"),
   ]);
 
   const typedBookmarks = (bookmarks ?? []) as Bookmark[];
   const typedCategories = (categories ?? []) as Category[];
+  const typedCollections = (collections ?? []) as Collection[];
 
   return (
     <main className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-5xl">
-        {/* Dashboard header */}
         <header className="mb-8">
           <p className="text-xs uppercase tracking-wider text-subtle">
             Dashboard
@@ -54,12 +66,10 @@ export default async function DashboardPage() {
           </p>
         </header>
 
-        {/* Add bookmark */}
         <section className="mb-10">
           <AddBookmarkForm />
         </section>
 
-        {/* Organization */}
         <section className="mb-10">
           <div className="mb-5">
             <p className="text-xs uppercase tracking-wider text-subtle">
@@ -71,20 +81,33 @@ export default async function DashboardPage() {
             </h2>
           </div>
 
-          {categoriesError ? (
-            <p className="border border-danger/30 p-4 text-sm text-danger">
-              Failed to load categories.
-            </p>
-          ) : (
-            <div className="max-w-xl">
-              <CategoryManager
-                initialCategories={typedCategories}
-              />
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              {categoriesError ? (
+                <p className="border border-danger/30 p-4 text-sm text-danger">
+                  Failed to load categories.
+                </p>
+              ) : (
+                <CategoryManager
+                  initialCategories={typedCategories}
+                />
+              )}
             </div>
-          )}
+
+            <div>
+              {collectionsError ? (
+                <p className="border border-danger/30 p-4 text-sm text-danger">
+                  Failed to load collections.
+                </p>
+              ) : (
+                <CollectionManager
+                  initialCollections={typedCollections}
+                />
+              )}
+            </div>
+          </div>
         </section>
 
-        {/* Bookmark library */}
         <section>
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>

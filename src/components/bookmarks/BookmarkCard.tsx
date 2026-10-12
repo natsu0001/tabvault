@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -7,6 +6,7 @@ import {
   Pencil,
   Star,
   Trash2,
+  Folder,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Bookmark } from "@/types/bookmark";
@@ -17,30 +17,43 @@ type Category = {
   color: string | null;
 };
 
+type Collection = {
+  id: string;
+  name: string;
+};
+
 type BookmarkCardProps = {
   bookmark: Bookmark;
   categories?: Category[];
+  collections?: Collection[];
   onDeleted?: (id: string) => void;
 };
 
 export default function BookmarkCard({
   bookmark,
   categories = [],
+  collections = [],
   onDeleted,
 }: BookmarkCardProps) {
-  const supabase = createClient();
-
   const [isFavorite, setIsFavorite] = useState(bookmark.is_favorite);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(bookmark.title);
   const [url, setUrl] = useState(bookmark.url);
   const [description, setDescription] = useState(bookmark.description ?? "");
   const [categoryId, setCategoryId] = useState(bookmark.category_id ?? "");
+  const [collectionId, setCollectionId] = useState(bookmark.collection_id ?? "");
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
-  const category = categories.find((item) => item.id === categoryId);
+  const category = categories.find(
+    (item) => item.id === (isEditing ? categoryId : bookmark.category_id),
+  );
+
+  const collection = collections.find(
+    (item) =>
+      item.id === (isEditing ? collectionId : bookmark.collection_id),
+  );
 
   async function toggleFavorite() {
     if (loading || deleting) return;
@@ -49,6 +62,8 @@ export default function BookmarkCard({
     setIsFavorite(!previous);
     setLoading(true);
     setError("");
+
+    const supabase = createClient();
 
     const { error } = await supabase
       .from("bookmarks")
@@ -86,6 +101,8 @@ export default function BookmarkCard({
     setLoading(true);
     setError("");
 
+    const supabase = createClient();
+
     const { error } = await supabase
       .from("bookmarks")
       .update({
@@ -93,6 +110,7 @@ export default function BookmarkCard({
         url: parsedUrl.href,
         description: description.trim() || null,
         category_id: categoryId || null,
+        collection_id: collectionId || null,
       })
       .eq("id", bookmark.id);
 
@@ -105,6 +123,7 @@ export default function BookmarkCard({
     setUrl(parsedUrl.href);
     setIsEditing(false);
     setLoading(false);
+    window.location.reload();
   }
 
   function cancelEdit() {
@@ -112,6 +131,7 @@ export default function BookmarkCard({
     setUrl(bookmark.url);
     setDescription(bookmark.description ?? "");
     setCategoryId(bookmark.category_id ?? "");
+    setCollectionId(bookmark.collection_id ?? "");
     setError("");
     setIsEditing(false);
   }
@@ -121,6 +141,8 @@ export default function BookmarkCard({
 
     setDeleting(true);
     setError("");
+
+    const supabase = createClient();
 
     const { error } = await supabase
       .from("bookmarks")
@@ -149,6 +171,7 @@ export default function BookmarkCard({
               id={`title-${bookmark.id}`}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
+              maxLength={200}
               className="w-full border border-border bg-background px-3 py-2 text-sm outline-none focus:border-border-hover"
             />
           </div>
@@ -175,31 +198,57 @@ export default function BookmarkCard({
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={3}
+              maxLength={1000}
               className="w-full resize-none border border-border bg-background px-3 py-2 text-sm outline-none focus:border-border-hover"
             />
           </div>
 
-          <div>
-            <label htmlFor={`category-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
-              Category
-            </label>
-            <select
-              id={`category-${bookmark.id}`}
-              value={categoryId}
-              onChange={(event) => setCategoryId(event.target.value)}
-              className="w-full border border-border bg-background px-3 py-2 text-sm outline-none"
-            >
-              <option value="">Uncategorized</option>
-              {categories.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`category-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+                Category
+              </label>
+              <select
+                id={`category-${bookmark.id}`}
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+                className="w-full border border-border bg-background px-3 py-2 text-sm outline-none"
+              >
+                <option value="">Uncategorized</option>
+                {categories.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor={`collection-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+                Collection
+              </label>
+              <select
+                id={`collection-${bookmark.id}`}
+                value={collectionId}
+                onChange={(event) => setCollectionId(event.target.value)}
+                className="w-full border border-border bg-background px-3 py-2 text-sm outline-none"
+              >
+                <option value="">No collection</option>
+                {collections.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-danger">
+            {error}
+          </p>
+        )}
 
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -227,8 +276,8 @@ export default function BookmarkCard({
     <article className="border border-border bg-surface p-5 transition-colors hover:border-border-hover">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="truncate text-base font-semibold">{title}</h2>
-          <p className="mt-1 truncate text-sm text-subtle">{url}</p>
+          <h2 className="truncate text-base font-semibold">{bookmark.title}</h2>
+          <p className="mt-1 truncate text-sm text-subtle">{bookmark.url}</p>
         </div>
 
         <button
@@ -242,24 +291,40 @@ export default function BookmarkCard({
         </button>
       </div>
 
-      {category && (
-        <span
-          className="mt-3 inline-flex items-center gap-2 border border-border px-2 py-1 text-xs text-muted"
-        >
-          <span className="size-2" style={{ backgroundColor: category.color ?? "#71717a" }} />
-          {category.name}
-        </span>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {category && (
+          <span className="inline-flex items-center gap-2 border border-border px-2 py-1 text-xs text-muted">
+            <span
+              className="size-2"
+              style={{ backgroundColor: category.color ?? "#71717a" }}
+            />
+            {category.name}
+          </span>
+        )}
+
+        {collection && (
+          <span className="inline-flex items-center gap-2 border border-border px-2 py-1 text-xs text-muted">
+            <Folder size={12} />
+            {collection.name}
+          </span>
+        )}
+      </div>
+
+      {bookmark.description && (
+        <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted">
+          {bookmark.description}
+        </p>
       )}
 
-      {description && (
-        <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted">{description}</p>
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-danger">
+          {error}
+        </p>
       )}
-
-      {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
 
       <div className="mt-5 flex items-center justify-between gap-2 border-t border-border pt-4">
         <a
-          href={url}
+          href={bookmark.url}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 text-xs font-medium text-muted hover:text-foreground"
@@ -282,7 +347,8 @@ export default function BookmarkCard({
             disabled={deleting}
             className="inline-flex items-center gap-1.5 px-2 py-1.5 text-xs text-muted hover:text-danger"
           >
-            <Trash2 size={13} /> {deleting ? "Deleting..." : "Delete"}
+            <Trash2 size={13} />
+            {deleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>

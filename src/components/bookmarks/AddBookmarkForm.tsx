@@ -1,10 +1,14 @@
-
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Category = {
+  id: string;
+  name: string;
+};
+
+type Collection = {
   id: string;
   name: string;
 };
@@ -22,31 +26,34 @@ export default function AddBookmarkForm({
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [collectionId, setCollectionId] = useState("");
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadCategories() {
+    async function loadOptions() {
       const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from("categories")
-        .select("id, name")
-        .order("name");
+      const [categoryResult, collectionResult] = await Promise.all([
+        supabase.from("categories").select("id, name").order("name"),
+        supabase.from("collections").select("id, name").order("name"),
+      ]);
 
-      if (error) {
-        setError("Could not load categories.");
+      if (categoryResult.error || collectionResult.error) {
+        setError("Could not load categories or collections.");
       } else {
-        setCategories(data ?? []);
+        setCategories(categoryResult.data ?? []);
+        setCollections(collectionResult.data ?? []);
       }
 
-      setLoadingCategories(false);
+      setLoadingOptions(false);
     }
 
-    void loadCategories();
+    void loadOptions();
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -97,6 +104,7 @@ export default function AddBookmarkForm({
           url: parsedUrl.href,
           description: description.trim() || null,
           category_id: categoryId || null,
+          collection_id: collectionId || null,
         });
 
       if (insertError) {
@@ -107,6 +115,7 @@ export default function AddBookmarkForm({
       setUrl("");
       setDescription("");
       setCategoryId("");
+      setCollectionId("");
 
       onSuccess?.();
     } catch (err) {
@@ -129,9 +138,7 @@ export default function AddBookmarkForm({
         <p className="text-xs uppercase tracking-wider text-subtle">
           New bookmark
         </p>
-        <h2 className="mt-1 text-xl font-semibold">
-          Add Bookmark
-        </h2>
+        <h2 className="mt-1 text-xl font-semibold">Add Bookmark</h2>
       </div>
 
       <div className="space-y-5">
@@ -180,29 +187,46 @@ export default function AddBookmarkForm({
           />
         </div>
 
-        <div>
-          <label htmlFor="bookmark-category" className="mb-2 block text-sm font-medium">
-            Category
-          </label>
-          <select
-            id="bookmark-category"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            disabled={loadingCategories}
-            className="w-full border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-border-hover"
-          >
-            <option value="">Uncategorized</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          {categories.length === 0 && !loadingCategories && (
-            <p className="mt-2 text-xs text-subtle">
-              Create a category above to organize this bookmark.
-            </p>
-          )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="bookmark-category" className="mb-2 block text-sm font-medium">
+              Category
+            </label>
+            <select
+              id="bookmark-category"
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              disabled={loadingOptions}
+              className="w-full border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-border-hover"
+            >
+              <option value="">Uncategorized</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="bookmark-collection" className="mb-2 block text-sm font-medium">
+              Collection
+            </label>
+            <select
+              id="bookmark-collection"
+              value={collectionId}
+              onChange={(event) => setCollectionId(event.target.value)}
+              disabled={loadingOptions}
+              className="w-full border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-border-hover"
+            >
+              <option value="">No collection</option>
+              {collections.map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -226,7 +250,7 @@ export default function AddBookmarkForm({
 
         <button
           type="submit"
-          disabled={loading || loadingCategories}
+          disabled={loading || loadingOptions}
           className="bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50"
         >
           {loading ? "Saving..." : "Save Bookmark"}

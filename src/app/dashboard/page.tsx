@@ -3,6 +3,7 @@ import AddBookmarkForm from "@/components/bookmarks/AddBookmarkForm";
 import BookmarkCard from "@/components/bookmarks/BookmarkCard";
 import CategoryManager from "@/components/categories/CategoryManager";
 import CollectionManager from "@/components/collections/CollectionManager";
+import BookmarkLibrary from "@/components/bookmarks/BookmarkLibrary";
 import type { Bookmark } from "@/types/bookmark";
 
 type Category = {
@@ -108,54 +109,30 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-subtle">
-                Library
-              </p>
+<section>
+  <div className="mb-5">
+    <p className="text-xs uppercase tracking-wider text-subtle">
+      Library
+    </p>
+    <h2 className="mt-1 text-xl font-semibold">
+      Your bookmarks
+    </h2>
+  </div>
 
-              <h2 className="mt-1 text-xl font-semibold">
-                Your bookmarks
-              </h2>
-            </div>
-
-            <span className="text-sm text-muted">
-              {typedBookmarks.length}{" "}
-              {typedBookmarks.length === 1
-                ? "bookmark"
-                : "bookmarks"}
-            </span>
-          </div>
-
-          {bookmarksError ? (
-            <div className="border border-danger/30 bg-danger/5 p-5">
-              <p className="text-sm text-danger">
-                Failed to load bookmarks.
-              </p>
-            </div>
-          ) : typedBookmarks.length === 0 ? (
-            <div className="border border-border bg-surface p-10 text-center">
-              <p className="text-sm text-muted">
-                No bookmarks yet.
-              </p>
-
-              <p className="mt-1 text-xs text-subtle">
-                Add your first bookmark above.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {typedBookmarks.map((bookmark) => (
-                <BookmarkCard
-                  key={bookmark.id}
-                  bookmark={bookmark}
-                  categories={typedCategories}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+  {bookmarksError ? (
+    <div className="border border-danger/30 bg-danger/5 p-5">
+      <p className="text-sm text-danger">
+        Failed to load bookmarks.
+      </p>
+    </div>
+  ) : (
+    <BookmarkLibrary
+      bookmarks={typedBookmarks}
+      categories={typedCategories}
+      collections={typedCollections}
+    />
+  )}
+</section>
       </div>
     </main>
   );

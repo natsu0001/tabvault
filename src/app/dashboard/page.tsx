@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import AddBookmarkForm from "@/components/bookmarks/AddBookmarkForm";
-import BookmarkCard from "@/components/bookmarks/BookmarkCard";
 import CategoryManager from "@/components/categories/CategoryManager";
 import CollectionManager from "@/components/collections/CollectionManager";
 import BookmarkLibrary from "@/components/bookmarks/BookmarkLibrary";
+import Sidebar from "@/components/layout/Sidebar";
+import Topbar from "@/components/layout/Topbar";
 import type { Bookmark } from "@/types/bookmark";
 
 type Category = {
@@ -51,89 +52,91 @@ export default async function DashboardPage() {
   const typedCollections = (collections ?? []) as Collection[];
 
   return (
-    <main className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-8">
-          <p className="text-xs uppercase tracking-wider text-subtle">
-            Dashboard
-          </p>
+    <div className="min-h-screen bg-background text-foreground lg:flex">
+      <Sidebar
+        collections={typedCollections.map(({ id, name }) => ({ id, name }))}
+      />
 
-          <h1 className="mt-2 text-3xl font-semibold">
-            Welcome to TabVault
-          </h1>
+      <div className="min-w-0 flex-1">
+        <Topbar email={user?.email ?? undefined} />
 
-          <p className="mt-2 text-sm text-muted">
-            Signed in as {user?.email}
-          </p>
-        </header>
-
-        <section className="mb-10">
-          <AddBookmarkForm />
-        </section>
-
-        <section className="mb-10">
-          <div className="mb-5">
+        <main className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
+          <section id="overview" className="mb-8 scroll-mt-24">
             <p className="text-xs uppercase tracking-wider text-subtle">
-              Organization
+              Dashboard
             </p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Welcome to TabVault
+            </h1>
+            <p className="mt-2 break-all text-sm text-muted">
+              Signed in as {user?.email}
+            </p>
+          </section>
 
-            <h2 className="mt-1 text-xl font-semibold">
-              Manage your library
-            </h2>
-          </div>
+          <section id="add-bookmark" className="mb-10 scroll-mt-24">
+            <AddBookmarkForm />
+          </section>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div>
-              {categoriesError ? (
-                <p className="border border-danger/30 p-4 text-sm text-danger">
-                  Failed to load categories.
-                </p>
-              ) : (
-                <CategoryManager
-                  initialCategories={typedCategories}
-                />
-              )}
+          <section id="organization" className="mb-10 scroll-mt-24">
+            <div className="mb-5">
+              <p className="text-xs uppercase tracking-wider text-subtle">
+                Organization
+              </p>
+              <h2 className="mt-1 text-xl font-semibold">
+                Manage your library
+              </h2>
             </div>
 
-            <div>
-              {collectionsError ? (
-                <p className="border border-danger/30 p-4 text-sm text-danger">
-                  Failed to load collections.
-                </p>
-              ) : (
-                <CollectionManager
-                  initialCollections={typedCollections}
-                />
-              )}
+            <div className="grid gap-5 xl:grid-cols-2">
+              <div className="min-w-0">
+                {categoriesError ? (
+                  <p className="border border-danger/30 p-4 text-sm text-danger">
+                    Failed to load categories.
+                  </p>
+                ) : (
+                  <CategoryManager initialCategories={typedCategories} />
+                )}
+              </div>
+
+              <div className="min-w-0">
+                {collectionsError ? (
+                  <p className="border border-danger/30 p-4 text-sm text-danger">
+                    Failed to load collections.
+                  </p>
+                ) : (
+                  <CollectionManager initialCollections={typedCollections} />
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-<section>
-  <div className="mb-5">
-    <p className="text-xs uppercase tracking-wider text-subtle">
-      Library
-    </p>
-    <h2 className="mt-1 text-xl font-semibold">
-      Your bookmarks
-    </h2>
-  </div>
+          <section id="library" className="scroll-mt-24">
+            <div className="mb-5">
+              <p className="text-xs uppercase tracking-wider text-subtle">
+                Library
+              </p>
+              <h2 className="mt-1 text-xl font-semibold">Your bookmarks</h2>
+            </div>
 
-  {bookmarksError ? (
-    <div className="border border-danger/30 bg-danger/5 p-5">
-      <p className="text-sm text-danger">
-        Failed to load bookmarks.
-      </p>
-    </div>
-  ) : (
-    <BookmarkLibrary
-      bookmarks={typedBookmarks}
-      categories={typedCategories}
-      collections={typedCollections}
-    />
-  )}
-</section>
+            {bookmarksError ? (
+              <div className="border border-danger/30 bg-danger/5 p-5">
+                <p className="text-sm text-danger">
+                  Failed to load bookmarks. Refresh the page to try again.
+                </p>
+              </div>
+            ) : (
+              <BookmarkLibrary
+                bookmarks={typedBookmarks}
+                categories={typedCategories}
+                collections={typedCollections.map(({ id, name }) => ({
+                  id,
+                  name,
+                }))}
+              />
+            )}
+          </section>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }

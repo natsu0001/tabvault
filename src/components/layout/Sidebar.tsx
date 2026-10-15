@@ -10,24 +10,25 @@ import {
   Settings,
 } from "lucide-react";
 
-const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "#overview" },
-  { label: "All Bookmarks", icon: Bookmark, href: "#library" },
-  { label: "Favorites", icon: Heart, href: "#library" },
-  { label: "Recent", icon: Clock3, href: "#library" },
-];
-
 type SidebarProps = {
   collections?: { id: string; name: string }[];
+  activeView?: string;
 };
 
-export default function Sidebar({ collections = [] }: SidebarProps) {
+export default function Sidebar({
+  collections = [],
+  activeView = "all",
+}: SidebarProps) {
+  const navigation = [
+    { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", view: "dashboard" },
+    { label: "All Bookmarks", icon: Bookmark, href: "/dashboard?view=all", view: "all" },
+    { label: "Favorites", icon: Heart, href: "/dashboard?view=favorites", view: "favorites" },
+    { label: "Recent", icon: Clock3, href: "/dashboard?view=recent", view: "recent" },
+  ];
+
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-border bg-background lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
-      <Link
-        href="/dashboard"
-        className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-6"
-      >
+      <Link href="/dashboard" className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-6">
         <span className="flex size-8 items-center justify-center border border-border bg-surface">
           <Bookmark size={16} />
         </span>
@@ -40,20 +41,25 @@ export default function Sidebar({ collections = [] }: SidebarProps) {
         </p>
 
         <nav className="space-y-1">
-          {navigation.map(({ label, icon: Icon, href }, index) => (
-            <Link
-              key={label}
-              href={href}
-              className={`flex items-center gap-3 border px-3 py-2.5 text-sm transition-colors ${
-                index === 0
-                  ? "border-border bg-surface text-foreground"
-                  : "border-transparent text-muted hover:border-border hover:bg-surface hover:text-foreground"
-              }`}
-            >
-              <Icon size={16} strokeWidth={1.8} />
-              {label}
-            </Link>
-          ))}
+          {navigation.map(({ label, icon: Icon, href, view }) => {
+            const active = activeView === view;
+
+            return (
+              <Link
+                key={label}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={`flex items-center gap-3 border px-3 py-2.5 text-sm transition-colors ${
+                  active
+                    ? "border-border bg-surface text-foreground"
+                    : "border-transparent text-muted hover:border-border hover:bg-surface hover:text-foreground"
+                }`}
+              >
+                <Icon size={16} strokeWidth={1.8} />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="mt-8">
@@ -62,7 +68,7 @@ export default function Sidebar({ collections = [] }: SidebarProps) {
               Collections
             </p>
             <Link
-              href="#organization"
+              href="/dashboard#organization"
               aria-label="Manage collections"
               className="text-subtle hover:text-foreground"
             >
@@ -75,7 +81,7 @@ export default function Sidebar({ collections = [] }: SidebarProps) {
               {collections.map((collection) => (
                 <Link
                   key={collection.id}
-                  href="#library"
+                  href={`/dashboard?view=all&collection=${encodeURIComponent(collection.id)}#library`}
                   className="flex items-center gap-3 border border-transparent px-3 py-2 text-sm text-muted transition-colors hover:border-border hover:bg-surface hover:text-foreground"
                 >
                   <Folder size={15} strokeWidth={1.8} />
@@ -93,7 +99,7 @@ export default function Sidebar({ collections = [] }: SidebarProps) {
 
       <div className="shrink-0 border-t border-border p-3">
         <Link
-          href="#organization"
+          href="/dashboard#organization"
           className="flex items-center gap-3 border border-transparent px-3 py-2.5 text-sm text-muted transition-colors hover:border-border hover:bg-surface hover:text-foreground"
         >
           <Settings size={16} strokeWidth={1.8} />

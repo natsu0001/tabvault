@@ -18,8 +18,19 @@ type Collection = {
   name: string;
   description: string | null;
 };
+type DashboardPageProps = {
+  searchParams: Promise<{ view?: string; collection?: string }>;
+};
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
+  const params = await searchParams;
+
+  const activeView =
+    params.view === "favorites" || params.view === "recent"
+      ? params.view
+      : "all";
   const supabase = await createClient();
 
   const {
@@ -55,6 +66,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-background text-foreground lg:flex">
       <Sidebar
         collections={typedCollections.map(({ id, name }) => ({ id, name }))}
+         activeView={activeView}
       />
 
       <div className="min-w-0 flex-1">
@@ -132,6 +144,8 @@ export default async function DashboardPage() {
                   id,
                   name,
                 }))}
+                  initialView={activeView}
+  initialCollectionId={params.collection}
               />
             )}
           </section>

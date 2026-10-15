@@ -20,6 +20,8 @@ type BookmarkLibraryProps = {
   bookmarks: Bookmark[];
   categories: Category[];
   collections: Collection[];
+    initialView?: "all" | "favorites" | "recent";
+  initialCollectionId?: string;
 };
 
 type SortOption = "newest" | "oldest" | "title-asc" | "title-desc";

@@ -1,7 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, LayoutGrid, List, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  Search,
+  LayoutGrid,
+  List,
+  SlidersHorizontal,
+} from "lucide-react";
 import BookmarkCard from "@/components/bookmarks/BookmarkCard";
 import type { Bookmark } from "@/types/bookmark";
 
@@ -20,24 +26,56 @@ type BookmarkLibraryProps = {
   bookmarks: Bookmark[];
   categories: Category[];
   collections: Collection[];
-    initialView?: "all" | "favorites" | "recent";
+  initialView?: "all" | "favorites" | "recent";
   initialCollectionId?: string;
 };
 
 type SortOption = "newest" | "oldest" | "title-asc" | "title-desc";
 
+function getFilterFromUrl(
+  view: string | null,
+  collectionId: string | null,
+): string {
+  if (collectionId) return `collection:${collectionId}`;
+  if (view === "favorites" || view === "recent") return view;
+  return "all";
+}
+
 export default function BookmarkLibrary({
   bookmarks,
   categories,
   collections,
+  initialView = "all",
+  initialCollectionId,
 }: BookmarkLibraryProps) {
+  const searchParams = useSearchParams();
+
+  const urlView = searchParams.get("view");
+  const urlCollection = searchParams.get("collection");
+
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(() =>
+    getFilterFromUrl(
+      urlView ?? initialView,
+      urlCollection ?? initialCollectionId ?? null,
+    ),
+  );
   const [sort, setSort] = useState<SortOption>("newest");
   const [view, setView] = useState<"grid" | "list">("grid");
 
+  // Keep the filter synchronized when the user navigates through the sidebar.
+  useEffect(() => {
+    setFilter(
+      getFilterFromUrl(
+        urlView ?? initialView,
+        urlCollection ?? initialCollectionId ?? null,
+      ),
+    );
+  }, [urlView, urlCollection, initialView, initialCollectionId]);
+
   const filteredBookmarks = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
     const result = bookmarks.filter((bookmark) => {
       const matchesSearch =
@@ -50,6 +88,9 @@ export default function BookmarkLibrary({
 
       if (filter === "favorites") {
         matchesFilter = bookmark.is_favorite;
+      } else if (filter === "recent") {
+        matchesFilter =
+          new Date(bookmark.created_at).getTime() >= sevenDaysAgo;
       } else if (filter.startsWith("category:")) {
         matchesFilter = bookmark.category_id === filter.slice(9);
       } else if (filter.startsWith("collection:")) {
@@ -83,6 +124,11 @@ export default function BookmarkLibrary({
     });
   }, [bookmarks, search, filter, sort]);
 
+  function clearFilters() {
+    setSearch("");
+    setFilter("all");
+  }
+
   return (
     <section>
       <div className="mb-5 flex flex-col gap-4">
@@ -92,12 +138,13 @@ export default function BookmarkLibrary({
             className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
           />
           <input
+            id="bookmark-search"
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search titles, URLs, descriptions..."
             aria-label="Search bookmarks"
-            className="w-full border border-border bg-surface py-3 pl-10 pr-4 text-sm outline-none placeholder:text-subtle focus:border-border-hover"
+            className="w-full border border-border bg-surface py-3 pl-10 pr-16 text-sm outline-none placeholder:text-subtle focus:border-border-hover"
           />
           <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 border border-border px-2 py-1 text-xs text-subtle sm:block">
             {filteredBookmarks.length}
@@ -116,6 +163,7 @@ export default function BookmarkLibrary({
             >
               <option value="all">All bookmarks</option>
               <option value="favorites">Favorites</option>
+              <option value="recent">Recent (7 days)</option>
               <option value="uncategorized">Uncategorized</option>
               <option value="uncollected">No collection</option>
 
@@ -156,7 +204,11 @@ export default function BookmarkLibrary({
               onClick={() => setView("grid")}
               aria-label="Grid view"
               aria-pressed={view === "grid"}
-              className={`p-2 ${view === "grid" ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`p-2 ${
+                view === "grid"
+                  ? "bg-foreground text-background"
+                  : "text-muted hover:text-foreground"
+              }`}
             >
               <LayoutGrid size={16} />
             </button>
@@ -165,7 +217,11 @@ export default function BookmarkLibrary({
               onClick={() => setView("list")}
               aria-label="List view"
               aria-pressed={view === "list"}
-              className={`p-2 ${view === "list" ? "bg-foreground text-background" : "text-muted hover:text-foreground"}`}
+              className={`p-2 ${
+                view === "list"
+                  ? "bg-foreground text-background"
+                  : "text-muted hover:text-foreground"
+              }`}
             >
               <List size={16} />
             </button>
@@ -192,10 +248,7 @@ export default function BookmarkLibrary({
           {(search || filter !== "all") && (
             <button
               type="button"
-              onClick={() => {
-                setSearch("");
-                setFilter("all");
-              }}
+              onClick={clearFilters}
               className="mt-4 border border-border px-3 py-2 text-sm hover:bg-surface-hover"
             >
               Clear search and filters

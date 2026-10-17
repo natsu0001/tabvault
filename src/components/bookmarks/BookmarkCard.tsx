@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ExternalLink,
@@ -45,6 +45,7 @@ export default function BookmarkCard({
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   const category = categories.find(
     (item) => item.id === (isEditing ? categoryId : bookmark.category_id),
@@ -123,7 +124,7 @@ export default function BookmarkCard({
     setUrl(parsedUrl.href);
     setIsEditing(false);
     setLoading(false);
-    window.location.reload();
+    router.refresh();
   }
 
   function cancelEdit() {
@@ -156,7 +157,7 @@ export default function BookmarkCard({
     }
 
     onDeleted?.(bookmark.id);
-    window.location.reload();
+    router.refresh();
   }
 
   if (isEditing) {

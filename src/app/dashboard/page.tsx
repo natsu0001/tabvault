@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AddBookmarkForm from "@/components/bookmarks/AddBookmarkForm";
 import CategoryManager from "@/components/categories/CategoryManager";
@@ -36,6 +37,10 @@ export default async function DashboardPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
 
   const [
     { data: bookmarks, error: bookmarksError },
@@ -145,7 +150,7 @@ export default async function DashboardPage({
                   name,
                 }))}
                   initialView={activeView}
-  initialCollectionId={params.collection}
+                  initialCollectionId={params.collection}
               />
             )}
           </section>

@@ -34,8 +34,12 @@ export default function AddBookmarkForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function loadOptions() {
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadOptions() {
+    try {
       const supabase = createClient();
 
       const [categoryResult, collectionResult] = await Promise.all([
@@ -44,17 +48,31 @@ export default function AddBookmarkForm({
       ]);
 
       if (categoryResult.error || collectionResult.error) {
-        setError("Could not load categories or collections.");
-      } else {
-        setCategories(categoryResult.data ?? []);
-        setCollections(collectionResult.data ?? []);
+        throw new Error("Could not load categories or collections.");
       }
 
-      setLoadingOptions(false);
+      if (!cancelled) {
+        setCategories(categoryResult.data ?? []);
+        setCollections(collectionResult.data ?? []);
+        setError("");
+      }
+    } catch {
+      if (!cancelled) {
+        setError("Could not load categories or collections.");
+      }
+    } finally {
+      if (!cancelled) {
+        setLoadingOptions(false);
+      }
     }
+  }
 
-    void loadOptions();
-  }, []);
+  void loadOptions();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

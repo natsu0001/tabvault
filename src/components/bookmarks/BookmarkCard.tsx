@@ -1,12 +1,18 @@
+
 "use client";
-import { useRouter } from "next/navigation";
+
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ExternalLink,
   Pencil,
   Star,
   Trash2,
   Folder,
+  Globe,
+  X,
+  Check,
+  ArrowUpRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Bookmark } from "@/types/bookmark";
@@ -45,16 +51,34 @@ export default function BookmarkCard({
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+
   const router = useRouter();
 
+  let hostname = "";
+  let faviconUrl = "";
+
+  try {
+    const parsed = new URL(bookmark.url);
+    hostname = parsed.hostname.replace(/^www\./, "");
+    faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+      parsed.hostname
+    )}&sz=64`;
+  } catch {
+    hostname = bookmark.url;
+  }
+
   const category = categories.find(
-    (item) => item.id === (isEditing ? categoryId : bookmark.category_id),
+    (item) => item.id === (isEditing ? categoryId : bookmark.category_id)
   );
 
   const collection = collections.find(
-    (item) =>
-      item.id === (isEditing ? collectionId : bookmark.collection_id),
+    (item) => item.id === (isEditing ? collectionId : bookmark.collection_id)
   );
+
+  const inputClass =
+    "w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-subtle focus:border-border-hover focus:ring-1 focus:ring-border-hover";
+
+  const labelClass = "mb-2 block text-xs font-medium text-muted";
 
   async function toggleFavorite() {
     if (loading || deleting) return;
@@ -64,22 +88,25 @@ export default function BookmarkCard({
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("bookmarks")
+        .update({ is_favorite: !previous })
+        .eq("id", bookmark.id);
 
-    const { error } = await supabase
-      .from("bookmarks")
-      .update({ is_favorite: !previous })
-      .eq("id", bookmark.id);
-
-    if (error) {
+      if (error) throw error;
+    } catch {
       setIsFavorite(previous);
-      setError(error.message);
+      setError("Couldn't update favorite. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   async function handleUpdate() {
+    if (loading || deleting) return;
+
     if (!title.trim() || !url.trim()) {
       setError("Title and URL are required.");
       return;
@@ -102,29 +129,29 @@ export default function BookmarkCard({
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("bookmarks")
+        .update({
+          title: title.trim(),
+          url: parsedUrl.href,
+          description: description.trim() || null,
+          category_id: categoryId || null,
+          collection_id: collectionId || null,
+        })
+        .eq("id", bookmark.id);
 
-    const { error } = await supabase
-      .from("bookmarks")
-      .update({
-        title: title.trim(),
-        url: parsedUrl.href,
-        description: description.trim() || null,
-        category_id: categoryId || null,
-        collection_id: collectionId || null,
-      })
-      .eq("id", bookmark.id);
+      if (error) throw error;
 
-    if (error) {
-      setError(error.message);
+      setUrl(parsedUrl.href);
+      setIsEditing(false);
+      router.refresh();
+    } catch {
+      setError("Couldn't save changes. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setUrl(parsedUrl.href);
-    setIsEditing(false);
-    setLoading(false);
-    router.refresh();
   }
 
   function cancelEdit() {
@@ -138,34 +165,51 @@ export default function BookmarkCard({
   }
 
   async function handleDelete() {
+    if (loading || deleting) return;
     if (!window.confirm(`Delete "${bookmark.title}"?`)) return;
 
     setDeleting(true);
     setError("");
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .eq("id", bookmark.id);
 
-    const { error } = await supabase
-      .from("bookmarks")
-      .delete()
-      .eq("id", bookmark.id);
+      if (error) throw error;
 
-    if (error) {
-      setError(error.message);
+      onDeleted?.(bookmark.id);
+      router.refresh();
+    } catch {
+      setError("Couldn't delete this bookmark. Please try again.");
       setDeleting(false);
-      return;
     }
-
-    onDeleted?.(bookmark.id);
-    router.refresh();
   }
 
   if (isEditing) {
     return (
-      <article className="border border-border bg-surface p-5">
+      <article className="min-w-0 border border-border bg-surface p-5 transition-colors">
+        <div className="mb-5 flex items-center justify-between gap-3 border-b border-border pb-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Edit bookmark</p>
+            <p className="mt-1 text-xs text-muted">Update your saved link and details.</p>
+          </div>
+          <button
+            type="button"
+            onClick={cancelEdit}
+            disabled={loading}
+            aria-label="Cancel editing"
+            className="inline-flex size-8 items-center justify-center border border-border text-muted transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
         <div className="space-y-4">
           <div>
-            <label htmlFor={`title-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+            <label htmlFor={`title-${bookmark.id}`} className={labelClass}>
               Title
             </label>
             <input
@@ -173,12 +217,12 @@ export default function BookmarkCard({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={200}
-              className="w-full border border-border bg-background px-3 py-2 text-sm outline-none focus:border-border-hover"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label htmlFor={`url-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+            <label htmlFor={`url-${bookmark.id}`} className={labelClass}>
               URL
             </label>
             <input
@@ -186,12 +230,12 @@ export default function BookmarkCard({
               type="url"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
-              className="w-full border border-border bg-background px-3 py-2 text-sm outline-none focus:border-border-hover"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label htmlFor={`description-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+            <label htmlFor={`description-${bookmark.id}`} className={labelClass}>
               Description
             </label>
             <textarea
@@ -200,20 +244,21 @@ export default function BookmarkCard({
               onChange={(event) => setDescription(event.target.value)}
               rows={3}
               maxLength={1000}
-              className="w-full resize-none border border-border bg-background px-3 py-2 text-sm outline-none focus:border-border-hover"
+              className={`${inputClass} resize-y`}
+              placeholder="What do you want to remember about this link?"
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor={`category-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+              <label htmlFor={`category-${bookmark.id}`} className={labelClass}>
                 Category
               </label>
               <select
                 id={`category-${bookmark.id}`}
                 value={categoryId}
                 onChange={(event) => setCategoryId(event.target.value)}
-                className="w-full border border-border bg-background px-3 py-2 text-sm outline-none"
+                className={inputClass}
               >
                 <option value="">Uncategorized</option>
                 {categories.map((item) => (
@@ -225,14 +270,14 @@ export default function BookmarkCard({
             </div>
 
             <div>
-              <label htmlFor={`collection-${bookmark.id}`} className="mb-2 block text-xs text-subtle">
+              <label htmlFor={`collection-${bookmark.id}`} className={labelClass}>
                 Collection
               </label>
               <select
                 id={`collection-${bookmark.id}`}
                 value={collectionId}
                 onChange={(event) => setCollectionId(event.target.value)}
-                className="w-full border border-border bg-background px-3 py-2 text-sm outline-none"
+                className={inputClass}
               >
                 <option value="">No collection</option>
                 {collections.map((item) => (
@@ -246,17 +291,17 @@ export default function BookmarkCard({
         </div>
 
         {error && (
-          <p role="alert" className="mt-4 text-sm text-danger">
+          <p role="alert" className="mt-4 border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
             {error}
           </p>
         )}
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={cancelEdit}
             disabled={loading}
-            className="border border-border px-3 py-2 text-xs text-muted hover:text-foreground"
+            className="border border-border px-4 py-2.5 text-xs font-medium text-muted transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
           >
             Cancel
           </button>
@@ -264,8 +309,9 @@ export default function BookmarkCard({
             type="button"
             onClick={handleUpdate}
             disabled={loading}
-            className="bg-foreground px-3 py-2 text-xs font-medium text-background disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 bg-foreground px-4 py-2.5 text-xs font-semibold text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
           >
+            <Check size={14} />
             {loading ? "Saving..." : "Save changes"}
           </button>
         </div>
@@ -274,11 +320,39 @@ export default function BookmarkCard({
   }
 
   return (
-    <article className="border border-border bg-surface p-5 transition-colors hover:border-border-hover">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="truncate text-base font-semibold">{bookmark.title}</h2>
-          <p className="mt-1 truncate text-sm text-subtle">{bookmark.url}</p>
+    <article className="group flex min-w-0 flex-col border border-border bg-surface p-4 transition-colors duration-200 hover:border-border-hover sm:p-5">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center border border-border bg-background">
+          {faviconUrl ? (
+            <img
+              src={faviconUrl}
+              alt=""
+              width={20}
+              height={20}
+              loading="lazy"
+              className="size-5 object-contain"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <Globe size={18} className="text-muted" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 pt-0.5">
+          <h2
+            title={bookmark.title}
+            className="line-clamp-2 break-words text-sm font-semibold leading-5 text-foreground transition-colors group-hover:text-foreground"
+          >
+            {bookmark.title}
+          </h2>
+          <p
+            title={bookmark.url}
+            className="mt-1.5 truncate text-xs text-subtle"
+          >
+            {hostname}
+          </p>
         </div>
 
         <button
@@ -286,67 +360,87 @@ export default function BookmarkCard({
           onClick={toggleFavorite}
           disabled={loading || deleting}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-          className="shrink-0 text-subtle hover:text-warning disabled:opacity-50"
+          aria-pressed={isFavorite}
+          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          className={`inline-flex size-8 shrink-0 items-center justify-center border transition-colors disabled:opacity-50 ${
+            isFavorite
+              ? "border-warning/30 bg-warning/10 text-warning"
+              : "border-transparent text-subtle hover:border-border hover:bg-background hover:text-warning"
+          }`}
         >
-          <Star size={17} fill={isFavorite ? "currentColor" : "none"} />
+          <Star size={15} fill={isFavorite ? "currentColor" : "none"} />
         </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {category && (
-          <span className="inline-flex items-center gap-2 border border-border px-2 py-1 text-xs text-muted">
-            <span
-              className="size-2"
-              style={{ backgroundColor: category.color ?? "#71717a" }}
-            />
-            {category.name}
-          </span>
-        )}
+      {(category || collection) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {category && (
+            <span className="inline-flex max-w-full items-center gap-2 border border-border px-2 py-1 text-xs text-muted">
+              <span
+                className="size-2 shrink-0"
+                style={{ backgroundColor: category.color ?? "#71717a" }}
+              />
+              <span className="truncate">{category.name}</span>
+            </span>
+          )}
 
-        {collection && (
-          <span className="inline-flex items-center gap-2 border border-border px-2 py-1 text-xs text-muted">
-            <Folder size={12} />
-            {collection.name}
-          </span>
+          {collection && (
+            <span className="inline-flex max-w-full items-center gap-1.5 border border-border px-2 py-1 text-xs text-muted">
+              <Folder size={12} className="shrink-0" />
+              <span className="truncate">{collection.name}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 flex-1">
+        {bookmark.description ? (
+          <p className="line-clamp-3 break-words text-sm leading-6 text-muted">
+            {bookmark.description}
+          </p>
+        ) : (
+          <p className="text-xs text-subtle/80">No description added.</p>
         )}
       </div>
 
-      {bookmark.description && (
-        <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted">
-          {bookmark.description}
-        </p>
-      )}
-
       {error && (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <p
+          role="alert"
+          className="mt-4 border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger"
+        >
           {error}
         </p>
       )}
 
-      <div className="mt-5 flex items-center justify-between gap-2 border-t border-border pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <a
           href={bookmark.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-xs font-medium text-muted hover:text-foreground"
+          className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-hover"
         >
-          Open bookmark <ExternalLink size={13} />
+          Open link
+          <ArrowUpRight size={14} />
         </a>
 
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setIsEditing(true)}
-            disabled={deleting}
-            className="inline-flex items-center gap-1.5 px-2 py-1.5 text-xs text-muted hover:text-foreground"
+            onClick={() => {
+              setError("");
+              setIsEditing(true);
+            }}
+            disabled={deleting || loading}
+            className="inline-flex min-h-8 items-center gap-1.5 px-2 text-xs text-muted transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
           >
-            <Pencil size={13} /> Edit
+            <Pencil size={13} />
+            Edit
           </button>
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleting}
-            className="inline-flex items-center gap-1.5 px-2 py-1.5 text-xs text-muted hover:text-danger"
+            disabled={deleting || loading}
+            className="inline-flex min-h-8 items-center gap-1.5 px-2 text-xs text-muted transition-colors hover:bg-danger/5 hover:text-danger disabled:opacity-50"
           >
             <Trash2 size={13} />
             {deleting ? "Deleting..." : "Delete"}

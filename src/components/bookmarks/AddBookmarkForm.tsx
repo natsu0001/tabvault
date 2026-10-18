@@ -54,7 +54,6 @@ useEffect(() => {
       if (!cancelled) {
         setCategories(categoryResult.data ?? []);
         setCollections(collectionResult.data ?? []);
-        setError("");
       }
     } catch {
       if (!cancelled) {

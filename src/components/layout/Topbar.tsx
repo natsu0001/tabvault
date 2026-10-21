@@ -161,6 +161,8 @@ export default function Topbar({ email }: TopbarProps) {
               TabVault
             </Link>
 
+
+
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
